@@ -1,9 +1,24 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
-const cookieParser = require('cookie-parser');
 const router = express.Router();
 const User = require('./user');
+
+function getCookieOptions() {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const sameSite = process.env.COOKIE_SAME_SITE || (isProduction ? 'none' : 'lax');
+  const secure = process.env.COOKIE_SECURE
+    ? process.env.COOKIE_SECURE === 'true'
+    : (sameSite === 'none' || isProduction);
+
+  return {
+    httpOnly: true,
+    secure,
+    sameSite,
+    maxAge: 24 * 60 * 60 * 1000,
+    path: '/',
+  };
+}
 
 // Signup route
 router.post('/signup', async (req, res) => {
@@ -54,13 +69,7 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign({ email: user.email }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
     
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: false, 
-      sameSite: 'lax',
-      maxAge: 24 * 60 * 60 * 1000,
-      path: '/',
-    });
+    res.cookie('token', token, getCookieOptions());
 
     console.log('✅ Token issued:', token);
     res.status(200).json({ message: 'Login successful', email: user.email });
@@ -74,11 +83,11 @@ router.post('/login', async (req, res) => {
 
 router.post('/logout', async (req, res) => {
   try {
+    const cookieOptions = getCookieOptions();
     res.cookie('token', '', {
-      httpOnly: true,
+      ...cookieOptions,
       expires: new Date(0),
-      sameSite: 'lax',
-      path: '/',
+      maxAge: 0,
     });
     res.status(200).json({ message: 'Logout successful' });
   } catch (error) {

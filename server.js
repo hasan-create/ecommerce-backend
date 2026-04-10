@@ -1,46 +1,4 @@
-// const dotenv = require("dotenv");
-// dotenv.config();
-// const feedbackRoutes = require("./route/feedback");
-// const orderRoutes = require("./route/order");
 
-
-
-// const express = require("express");
-// const app = express();
-// const cors = require("cors");
-// const cookieParser = require("cookie-parser");
-// const mongoose = require("mongoose");
-
-// const authRoutes = require("./route/auth");
-// const productRoutes = require("./route/products");
-// const cartRoutes = require("./route/cart");
-
-
-// mongoose
-//   .connect("mongodb://127.0.0.1:27017/ecommerse")
-//   .then(() => console.log("MongoDB connection success"))
-//   .catch((err) => console.log(err));
-
-// app.use(cookieParser());
-// app.use(
-//   cors({
-//     origin: "http://localhost:5173", 
-//     credentials: true, 
-//   })
-// );
-// app.use(express.json());
-// app.use(express.urlencoded({ extended: true }));
-// app.use("/uploads", express.static("uploads"));
-
-
-// app.use("/api/auth", authRoutes);
-// app.use("/api/", productRoutes);
-// app.use("/api/cart", cartRoutes);
-// app.use("/api/feedback", feedbackRoutes);
-// app.use("/api/order", orderRoutes);
-// app.listen(3000, () => {
-//   console.log("Server started at port 3000");
-// });
 const dotenv = require("dotenv");
 dotenv.config();
 
@@ -57,11 +15,18 @@ const authRoutes = require("./route/auth");
 const productRoutes = require("./route/products");
 const cartRoutes = require("./route/cart");
 
+const PORT = Number(process.env.PORT) || 3000;
+const MONGODB_URL = process.env.MONGODB_URL || "mongodb://127.0.0.1:27017/ecommerse";
+const CLIENT_URLS = (process.env.CLIENT_URL || "http://localhost:5173")
+  .split(",")
+  .map((url) => url.trim())
+  .filter(Boolean);
+
 // ----------------------
-// CONNECT MONGO
+// CONNECT 
 // ----------------------
 mongoose
-  .connect("mongodb://127.0.0.1:27017/ecommerse")
+  .connect(MONGODB_URL)
   .then(() => console.log("MongoDB connection success"))
   .catch((err) => console.log(err));
 
@@ -79,8 +44,14 @@ app.use((req, res, next) => {
 app.use(cookieParser());
 app.use(
   cors({
-    origin: "http://localhost:5173", // your React frontend
-    credentials: true,               // allow cookies
+    origin: (origin, callback) => {
+      if (!origin || CLIENT_URLS.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
   })
 );
 
@@ -100,6 +71,6 @@ app.use("/api/order", orderRoutes);
 // ----------------------
 // START SERVER
 // ----------------------
-app.listen(3000, () => {
-  console.log("Server started at port 3000");
+app.listen(PORT, () => {
+  console.log(`Server started at port ${PORT}`);
 });

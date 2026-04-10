@@ -2,19 +2,38 @@
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
+const streamifier = require("streamifier");
+const { v2: cloudinary } = require("cloudinary");
 const Product = require("./productschema");
 
 // -------------------- MULTER SETUP --------------------
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "uploads/");
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + "-" + file.originalname);
-  },
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+}).single("image");
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-const upload = multer({ storage: storage }).single("image");
+function uploadToCloudinary(file) {
+  return new Promise((resolve, reject) => {
+    const cloudinaryStream = cloudinary.uploader.upload_stream(
+      {
+        folder: process.env.CLOUDINARY_FOLDER || "ecommerse/products",
+        resource_type: "image",
+      },
+      (error, result) => {
+        if (error) return reject(error);
+        return resolve(result);
+      }
+    );
+
+    streamifier.createReadStream(file.buffer).pipe(cloudinaryStream);
+  });
+}
 
 // -------------------- ADD NEW PRODUCT --------------------
 router.post("/products", (req, res) => {
@@ -26,7 +45,8 @@ router.post("/products", (req, res) => {
     try {
       const { name, size, price, description, category, season, gender } =
         req.body;
-      const imagePath = req.file.path;
+      const uploadResult = await uploadToCloudinary(req.file);
+      const imagePath = uploadResult.secure_url;
 
       const newProduct = new Product({
         image: imagePath,
