@@ -17,7 +17,7 @@ const cartRoutes = require("./route/cart");
 
 const PORT = Number(process.env.PORT) || 3000;
 const MONGODB_URL = process.env.MONGODB_URL || "mongodb://127.0.0.1:27017/ecommerse";
-const CLIENT_URLS = (process.env.CLIENT_URL || "http://localhost:5173")
+const CLIENT_URLS = (process.env.CLIENT_URL || process.env.CLIENT_URLS || "http://localhost:5173")
   .split(",")
   .map((url) => url.trim())
   .filter(Boolean);
@@ -59,6 +59,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static("uploads"));
 
+app.get("/api/health", (req, res) => {
+  res.status(200).json({ ok: true, uptime: process.uptime() });
+});
+
 // ----------------------
 // ROUTES
 // ----------------------
@@ -73,4 +77,5 @@ app.use("/api/order", orderRoutes);
 // ----------------------
 app.listen(PORT, () => {
   console.log(`Server started at port ${PORT}`);
+  console.log(`Allowed client origins: ${CLIENT_URLS.join(", ")}`);
 });
