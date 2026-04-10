@@ -15,11 +15,18 @@ const authRoutes = require("./route/auth");
 const productRoutes = require("./route/products");
 const cartRoutes = require("./route/cart");
 
+function normalizeOrigin(value) {
+  return String(value || "")
+    .trim()
+    .replace(/^['"]|['"]$/g, "")
+    .replace(/\/+$/, "");
+}
+
 const PORT = Number(process.env.PORT) || 3000;
 const MONGODB_URL = process.env.MONGODB_URL || "mongodb://127.0.0.1:27017/ecommerse";
-const CLIENT_URLS = (process.env.CLIENT_URL || process.env.CLIENT_URLS || "http://localhost:5173")
+const CLIENT_URLS = (process.env.CLIENT_URL || process.env.CLIENT_URLS || "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174")
   .split(",")
-  .map((url) => url.trim())
+  .map(normalizeOrigin)
   .filter(Boolean);
 
 // ----------------------
@@ -45,11 +52,14 @@ app.use(cookieParser());
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || CLIENT_URLS.includes(origin)) {
+      const normalizedOrigin = normalizeOrigin(origin);
+
+      if (!origin || CLIENT_URLS.includes(normalizedOrigin)) {
         return callback(null, true);
       }
 
-      return callback(new Error("Not allowed by CORS"));
+      console.warn(`Blocked CORS origin: ${origin}`);
+      return callback(null, false);
     },
     credentials: true,
   })
